@@ -1,81 +1,86 @@
-class Member {
-  constructor(id, name, email, plan) {
-    this.id = id;
-    this.name = name;
-    this.email = email;
-    this.plan = plan;
-  }
+const form = document.getElementById("memberForm");
+const table = document.getElementById("memberRows");
+const emptyState = document.getElementById("emptyState");
+const memberCount = document.getElementById("memberCount");
+
+let members = JSON.parse(localStorage.getItem("gym-members")) || [
+  { id: 101, name: "Khushal", email: "khushal@gmail.com", plan: "Premium" },
+  { id: 102, name: "Priya", email: "priya@gmail.com", plan: "Standard" },
+  { id: 103, name: "Priyanka", email: "priyanka@gmail.com", plan: "Regular" },
+  { id: 104, name: "Priyal", email: "priyal@gmail.com", plan: "Premium" }
+];
+
+let memberId = members.length
+  ? Math.max(...members.map((member) => member.id)) + 1
+  : 101;
+
+function saveMembers() {
+  localStorage.setItem("gym-members", JSON.stringify(members));
 }
 
-class GymManager {
-  constructor() {
-    this.members = this.loadMembers();
-  }
+function displayMembers() {
+  table.innerHTML = "";
 
-  loadMembers() {
-    const savedMembers = localStorage.getItem("gym-members");
-    if (savedMembers) {
-      return JSON.parse(savedMembers).map((member) =>
-        new Member(member.id, member.name, member.email, member.plan)
-      );
-    }
-    return [
-      new Member(101, "Khushal", "khushal@gmail.com", "Premium"),
-      new Member(102, "Priya", "priya@gmail.com", "Standard")
-    ];
-  }
+  members.forEach(function (member) {
+    const row = document.createElement("tr");
 
-  addMember(name, email, plan) {
-    const nextId = this.members.length
-      ? Math.max(...this.members.map((member) => member.id)) + 1
-      : 101;
-    this.members.push(new Member(nextId, name, email, plan));
-    this.save();
-  }
+    const idCell = document.createElement("td");
+    idCell.textContent = member.id;
 
-  removeMember(id) {
-    this.members = this.members.filter((member) => member.id !== id);
-    this.save();
-  }
+    const nameCell = document.createElement("td");
+    nameCell.textContent = member.name;
 
-  save() {
-    localStorage.setItem("gym-members", JSON.stringify(this.members));
-  }
+    const emailCell = document.createElement("td");
+    emailCell.textContent = member.email;
+
+    const planCell = document.createElement("td");
+    planCell.textContent = member.plan;
+
+    const actionCell = document.createElement("td");
+    const removeButton = document.createElement("button");
+    removeButton.textContent = "Remove";
+    removeButton.className = "delete-button";
+    removeButton.addEventListener("click", function () {
+      members = members.filter(function (currentMember) {
+        return currentMember.id !== member.id;
+      });
+      saveMembers();
+      displayMembers();
+    });
+
+    actionCell.appendChild(removeButton);
+    row.append(idCell, nameCell, emailCell, planCell, actionCell);
+    table.appendChild(row);
+  });
+
+  emptyState.hidden = members.length > 0;
+  memberCount.textContent = members.length + " member" + (members.length === 1 ? "" : "s");
 }
 
-const manager = new GymManager();
-const rows = document.querySelector("#memberRows");
-const form = document.querySelector("#memberForm");
-const emptyState = document.querySelector("#emptyState");
-
-function renderMembers() {
-  rows.innerHTML = manager.members.map((member) => `
-    <tr>
-      <td>${member.id}</td>
-      <td>${member.name}</td>
-      <td>${member.email}</td>
-      <td>${member.plan}</td>
-      <td><button class="delete-button" data-id="${member.id}">Remove</button></td>
-    </tr>
-  `).join("");
-  emptyState.hidden = manager.members.length > 0;
-  document.querySelector("#memberCount").textContent = `${manager.members.length} member${manager.members.length === 1 ? "" : "s"}`;
-}
-
-form.addEventListener("submit", (event) => {
+form.addEventListener("submit", function (event) {
   event.preventDefault();
-  const data = new FormData(form);
-  manager.addMember(data.get("name"), data.get("email"), data.get("plan"));
-  form.reset();
-  renderMembers();
-});
 
-rows.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-id]");
-  if (button && confirm("Remove this member?")) {
-    manager.removeMember(Number(button.dataset.id));
-    renderMembers();
+  const name = document.getElementById("name").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const plan = document.getElementById("plan").value;
+
+  if (!name || !email || !plan) {
+    form.reportValidity();
+    return;
   }
+
+  if (!email.includes("@")) {
+    document.getElementById("email").setCustomValidity("Please enter a valid email address.");
+    form.reportValidity();
+    document.getElementById("email").setCustomValidity("");
+    return;
+  }
+
+  members.push({ id: memberId, name: name, email: email, plan: plan });
+  memberId++;
+  saveMembers();
+  displayMembers();
+  form.reset();
 });
 
-renderMembers();
+displayMembers();
